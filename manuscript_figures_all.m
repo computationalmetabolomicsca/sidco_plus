@@ -7,21 +7,21 @@
 % MCuperlovic-Culf, Ottawa, 2026
 % ======================================================================================
 % Step 1 — generate the data  MC simulations
-r1 = mc_functional_dependence('n', 1000, 'noise_std', 0.1, 'seed', 42, 'plot', false);
+r1 = mc_functional_dependence('n', 1000, 'noise_std', 1, 'seed', 42, 'plot', false);
 
 % Step 2 — run the focused dCor analysis (produces all 4 figures automatically)
 results = dcor_convergence_analysis(r1, ...
     'sample_sizes', [5 10 20 50 100 200 500], ...
     'n_reps',       200, ...
     'B_bb',         100, ...
-    'alpha',        0.01);
+    'alpha',        0.003);
 
 
 
 function results = dcor_convergence_analysis(r1, varargin)
 % DCOR_CONVERGENCE_ANALYSIS
 %   For each functional model in r1, draws random subsamples of increasing
-%   size from N=1000 simulated observations, computes the UNBIASED distance
+%   size from N=200 simulated observations, computes the UNBIASED distance
 %   correlation (U-statistic, Szekely & Rizzo 2014) and three confidence
 %   intervals, repeating n_reps times to characterise the sampling
 %   distribution and produces figures for the manuscript.
@@ -42,15 +42,14 @@ function results = dcor_convergence_analysis(r1, varargin)
 %        sample size independently.
 %
 % =========================================================================
-%  FIGURES (Fig.numbers used in this code, not completelly corresponding to
-%  final manuscript version
+%  FIGURES 
 % =========================================================================
-%   Fig 4 — P-VALUE / POWER (one panel per model)
+%   P-VALUE / POWER (one panel per model)
 %     Distribution of raw p-values as violins vs sample size.
 %     Empirical power (fraction p < alpha) annotated above each violin.
 %     Fraction surviving BH-FDR annotated below.
 %
-%   Fig 5 — VIOLIN + CI BANDS (one panel per model)
+%   VIOLIN + CI BANDS (one panel per model)
 %     Violin of dCor(U) distribution vs sample size.
 %     Three CI bands overlaid: Fisher z (black), Bayes BB (blue),
 %     Bernstein (green).  Red dashed = full-N reference.
@@ -59,11 +58,11 @@ function results = dcor_convergence_analysis(r1, varargin)
 %       red   = q >= alpha (not significant after FDR)
 %
 %
-%   Fig 5 — CI COMPARISON (one panel per model)
+%   CI COMPARISON (one panel per model)
 %     Width of each CI method vs sample size on log scale.
 %     Shows how quickly each CI narrows with increasing n.
 %
-%   Fig 6 — SAMPLE SIZE EFFECT SUMMARY
+%   SAMPLE SIZE EFFECT SUMMARY
 %     Bias (mean dCor − true dCor) and SD vs log(n), all models.
 %
 % =========================================================================
@@ -106,9 +105,7 @@ function results = dcor_convergence_analysis(r1, varargin)
 %   Rubin (1981). Ann. Statist. 9(1) — Bayesian bootstrap
 %   Benjamini & Hochberg (1995). J. R. Stat. Soc. B — BH-FDR
 
-% -------------------------------------------------------------------------
-%  Parse
-% -------------------------------------------------------------------------
+
 ip = inputParser;
 addRequired(ip,  'r1');
 addParameter(ip, 'sample_sizes', [5 10 20 50 100 200 500]);
@@ -240,7 +237,7 @@ results.sample_sizes = sample_sizes;
 results.params       = pm;
 
 % -------------------------------------------------------------------------
-%  Produce  figures
+%    figures
 % -------------------------------------------------------------------------
 dcor_convergence_plot(results);
 
@@ -338,9 +335,11 @@ for b = 1:B_perm
 end
 p = (1 + count) / (1 + B_perm);
 end
-
+% =========================================================================
+%  CHI-SQUARE P-VALUE for dCor U-stat
+% =========================================================================
 function [pval] = dcor_chi2_test(dcor,n)
-% Distance correlation chi-square test (Székely & Rizzo, 2013)
+% Distance correlation chi-square test 
 % X: n×p   Y: n×q   (n samples)
 % Returns:
 %   dcor : distance correlation
@@ -349,11 +348,6 @@ function [pval] = dcor_chi2_test(dcor,n)
 
     % --- Test statistic ---
     T = n * dcor^2;
-
-    % --- Gamma approximation for p-value ---
-    % From Székely & Rizzo (2013)
-    % E(T) = 1, Var(T) = 2
-    % So Gamma(k, theta) with:
     k = 1/2;      % shape
     theta = 2;    % scale
 
@@ -662,6 +656,9 @@ fig6 = plot_ci_coverage(results, S, model_names, model_labels, ...
 fig7 = plot_dcor_diff_significance(results, S, model_names, model_labels, ...
     sample_sizes, n_sizes);
 
+fig8 = plot_power_type1(results, S, model_names, model_labels, ...
+               sample_sizes, n_sizes);
+
 if S.export
     save_fig(fig1, 'Fig4_dCor_Violins_CI',      S);
     save_fig(fig2, 'Fig4_dCor_Pvalues',         S);
@@ -673,6 +670,9 @@ if S.export
 
     save_fig(fig6, 'Fig5_dCor_CI_Coverage',     S);
     save_fig(fig7, 'Fig5_dCor_Diff_Signif',     S);
+    save_fig(fig8, 'Fig8_Power_Type1', S);
+
+
 end
 end
 
@@ -944,7 +944,7 @@ end
 
 
 % =========================================================================
-%  FIGURE 3 — CI WIDTH COMPARISON
+%  FIGURE  — CI WIDTH COMPARISON
 %  One panel per model.  Log-x axis.
 %  Three lines: Fisher z, Bayes BB, Bernstein — width vs sample size.
 %  Shows how quickly each CI narrows and which is tightest/widest.
@@ -1031,7 +1031,7 @@ set(fig, 'PaperUnits', 'centimeters', 'PaperSize', [24 7]);
 end
 
 % ==========================================================================
-% Figure 3A alternative way to show effect of CI selection
+% Figure  Alternative way to show effect of CI selection
 % =========================================================================
 function fig = plot_ci_widthsA(res, S, model_names, model_labels, ...
         sample_sizes, alpha, n_reps, n_sizes)
@@ -1131,9 +1131,6 @@ for m = 1:n_models
             'FaceColor', col_above, 'EdgeColor','none', 'FaceAlpha',0.50, ...
             'DisplayName','Above hi CI');
 
-2
-
-
         % Shift below/above bars slightly so they don't overlap within bars
         b2.XOffset = -0.18;
         b3.XOffset =  0.18;
@@ -1212,7 +1209,7 @@ annotation(fig,'textbox',[0.02 0.001 0.96 0.025], ...
 set(fig,'PaperUnits','centimeters','PaperSize',[6*n_methods, 5*n_models]);
 end
 % =========================================================================
-%  FIGURE 4 — BIAS AND SD SUMMARY
+%  FIGURE  — BIAS AND SD SUMMARY
 %  Left panels: bias (mean dCor − true dCor) vs log(n) for all models.
 %  Right panels: SD of dCor vs log(n).
 %  All models overlaid in a single panel each.
@@ -1306,7 +1303,7 @@ end
 
 
 % =========================================================================
-%  FIGURE 5 — P-VALUE COMPARISON: t-test vs Permutation
+%  FIGURE  — P-VALUE COMPARISON: t-test vs Permutation
 %
 %  Layout: n_models rows x 1 column.
 %  Each panel: scatter of t-test p-value vs permutation p-value for every
@@ -1356,8 +1353,6 @@ for m = 1:n_models
 
     for col_idx = 1:2   % 1=Chi vs perm raw p, 2=Ttest vs perm
         pl  = pl + 1;
-%MCC &&&        ax  = subplot(n_models, 2, (m-1)*2 + col_idx);
-
         ax  = subplot(2,5, m+(col_idx-1)*n_models);
         hold(ax,'on');
 
@@ -1454,7 +1449,7 @@ for m = 1:n_models
 
         if strcmp(mname,'random'), ax.Color=[0.96 0.95 0.92]; end
 
-        % Legend on first model only to avoid clutter
+        % Legend on first model 
   %      if m == 1 && col_idx == 2
   %          valid_h = arrayfun(@(h) isvalid(h) && isgraphics(h,'scatter'), h_sz);
   %          if any(valid_h)
@@ -1482,7 +1477,7 @@ annotation(fig,'textbox',[0.02 0.001 0.96 0.025], ...
 set(fig,'PaperUnits','centimeters','PaperSize',[28 32]);
 end
 % =========================================================================
-% Plot proportion agreeing on significant at different alpha values
+% FIGURE Plot proportion agreeing on significant at different alpha values
 % =========================================================================
 function fig = plot_pval_comparisonA(res, S, model_names, model_labels, ...
         sample_sizes, n_sizes,pnotq)
@@ -1656,7 +1651,7 @@ set(fig, 'PaperUnits', 'centimeters', 'PaperSize', [8*n_alpha, 6*n_models]);
 end
 
 % =========================================================================
-%  FIGURE 6 — CI COVERAGE OF BIAS
+%  FIGURE  — CI COVERAGE OF BIAS
 
 
 % =========================================================================
@@ -1874,8 +1869,8 @@ end
 
 
 % =========================================================================
-%  FIGURE 7 — STATISTICAL SIGNIFICANCE OF dCor DIFFERENCE
-%             (subsample vs full N=1000)
+%  FIGURE  — STATISTICAL SIGNIFICANCE OF dCor DIFFERENCE
+%             (subsample vs full N)
 %
 %  For each model and sample size:
 %    The question: is the subsample dCor significantly DIFFERENT from the
@@ -2455,15 +2450,9 @@ else
     dc  = max(0, sign(val)*sqrt(abs(val)));
 end
 
-dc=abs(dc); %MCC added to test 
+dc=abs(dc); %just in case
 end
 
-function Au = u_center(A, n)
-rs = sum(A,2);
-gs = sum(rs);
-Au = A - rs*ones(1,n)/(n-2) - ones(n,1)*rs'/(n-2) + gs/((n-1)*(n-2));
-Au(1:n+1:end) = 0;
-end
 
 
 % =========================================================================
@@ -2597,4 +2586,400 @@ switch fname
     case 'random',    s = 'X indep. Y';
     otherwise,        s = '';
 end
+end
+
+
+% =========================================================================
+%  FIGURE  — POWER AND TYPE I ERROR
+%
+%  Four panels in a 2x2 layout:
+%    A (top-left)  : Power curves vs sample size for each p-value method,
+%                    one line per functional model (random excluded).
+%                    Power = fraction of n_reps replicates with raw p < alpha.
+%    B (top-right) : Type I error rate vs sample size — random model only.
+%                    Horizontal dashed red line = nominal alpha.
+%                    All methods shown; values should hover near alpha.
+%    C (bot-left)  : Power heatmap [model x sample_size] per method,
+%                    colour = empirical power, overlaid with numeric values.
+%                    Three sub-panels side by side: t-test / Chi2 / Permutation.
+%    D (bot-right) : Bernstein CI-based rejection rate:
+%                    Rejection = CI excludes 0 (lower bound > 0).
+%                    Shown for all models; random = Type I error proxy.
+%
+%  INPUTS:
+%    res          — results struct from dcor_convergence_analysis
+%    S            — style struct
+%    model_names  — {'linear','quadratic','cubic','sin','random'}
+%    model_labels — display labels
+%    sample_sizes — vector of sample sizes tested
+%    n_sizes      — numel(sample_sizes)
+%
+%  OUTPUTS:
+%    fig  — figure handle
+% =========================================================================
+function fig = plot_power_type1(res, S, model_names, model_labels, ...
+        sample_sizes, n_sizes)
+
+alpha      = S.params.alpha;
+n_reps     = S.params.n_reps;
+n_models   = numel(model_names);
+x_pos      = 1:n_sizes;
+x_tick     = arrayfun(@num2str, sample_sizes, 'UniformOutput', false);
+rand_idx   = find(strcmp(model_names, 'random'));
+func_idx   = setdiff(1:n_models, rand_idx);
+
+% ------------------------------------------------------------------
+% Method definitions
+%   name   : display label
+%   field  : field in res.(mname) containing raw p-values
+%   col    : line colour
+%   ls     : line style
+% ------------------------------------------------------------------
+methods(1).name  = 'SR13 t-test';
+methods(1).field = 'pval';
+methods(1).col   = [0.15 0.65 0.35];
+methods(1).ls    = '-o';
+
+methods(2).name  = 'Chi2';
+methods(2).field = 'pval_chi2';
+methods(2).col   = [0.20 0.50 0.80];
+methods(2).ls    = '-s';
+
+methods(3).name  = 'Permutation';
+methods(3).field = 'pval_perm';
+methods(3).col   = [0.75 0.22 0.18];
+methods(3).ls    = '-^';
+
+n_methods = numel(methods);
+
+% ------------------------------------------------------------------
+% Pre-compute power and Type I error for each method, model, sample size
+%   power_mat{k}(m, s) = fraction of reps with p < alpha
+%   type1_mat{k}(s)    = same for random model
+% ------------------------------------------------------------------
+power_mat = cell(n_methods, 1);
+type1_mat = cell(n_methods, 1);
+
+for k = 1:n_methods
+    pw = NaN(n_models, n_sizes);
+    t1 = NaN(1, n_sizes);
+    for m = 1:n_models
+        mname = model_names{m};
+        pv    = res.(mname).(methods(k).field);   % [n_reps x n_sizes]
+        for s = 1:n_sizes
+            col_pv = pv(:, s);
+            ok     = ~isnan(col_pv);
+            if sum(ok) < 2, continue; end
+            pw(m, s) = mean(col_pv(ok) < alpha);
+        end
+    end
+    t1 = pw(rand_idx, :);
+    power_mat{k} = pw;
+    type1_mat{k} = t1;
+end
+
+% ------------------------------------------------------------------
+% Bernstein CI rejection rate: reject H0 if lower CI bound > 0
+%   Uses res.(mname).ci_bern  [n_sizes x 2] (distribution-level CI)
+%   For a per-replicate version we use the individual dCor values and
+%   recompute per-replicate Bernstein CIs on the fly.
+% ------------------------------------------------------------------
+bern_reject = NaN(n_models, n_sizes);   % rejection rate
+
+for m = 1:n_models
+    mname = model_names{m};
+    for s = 1:n_sizes
+        ns    = sample_sizes(s);
+        d     = res.(mname).dcor_u(:, s);
+        ok    = ~isnan(d);
+        if sum(ok) < 2, continue; end
+        d_ok  = d(ok);
+        n_ok  = numel(d_ok);
+
+        % Per-replicate Bernstein CI lower bound
+        % Maurer & Pontil (2009): eps = sqrt(2*s2*ln(2/alpha)/K) + (2/3)*ln(2/alpha)/K
+        % where K = ns (sample size), s2 = variance of the *statistic* estimate.
+        % Single-observation case: s2 = 0, so eps = (2/3)*ln(2/alpha)/ns
+        lnt  = log(2 / alpha);
+        eps_vec = (2/3) * lnt ./ ns;                    % scalar, same for all reps
+        lo_bern = d_ok - eps_vec;                        % [n_ok x 1]
+
+        % Reject if lo > 0  (CI entirely above zero)
+        bern_reject(m, s) = mean(lo_bern > 0.1); %&&& change to 0.1 from 0
+    end
+end
+
+% ------------------------------------------------------------------
+% Figure layout
+% ------------------------------------------------------------------
+fig = figure('Name', 'Fig8_Power_Type1', 'NumberTitle', 'off', ...
+    'Color', 'w', 'Units', 'centimeters', 'Position', [1 1 26 26]);
+
+sgtitle(sprintf(['Power and Type I Error  |  dCor (U-stat)  |  \\alpha=%.3f  ' ...
+    '|  %d replicates'], alpha, n_reps), ...
+    'FontName', S.font, 'FontSize', S.fsz_title + 1, ...
+    'FontWeight', 'bold', 'Color', S.black, 'Interpreter', 'tex');
+
+% ---- Panel A: Power curves (functional models only) ---- 
+ax_A = subplot(2, 2, 1);
+hold(ax_A, 'on');
+
+% Nominal alpha reference
+yline(ax_A, alpha, '--', 'Color', [0.82 0.05 0.05], 'LineWidth', 1.0, ...
+    'Label', sprintf('\\alpha=%.3f', alpha), ...
+    'LabelHorizontalAlignment', 'right', ...
+    'FontName', S.font, 'FontSize', S.fsz_ax, ...
+    'HandleVisibility', 'off', 'Interpreter', 'tex');
+yline(ax_A, 0.80, ':', 'Color', S.grey, 'LineWidth', 0.7, ...
+    'HandleVisibility', 'off');   % 80% power guideline
+
+% One linestyle per method, one hue per model — use marker shape for model
+model_markers = {'o', 's', '^', 'd'};   % one per functional model
+h_legend = [];
+leg_labels = {};
+
+for k = 1:n_methods
+    for mi = 1:numel(func_idx)
+        m     = func_idx(mi);
+        pw    = power_mat{k}(m, :);
+        valid = ~isnan(pw);
+        if ~any(valid), continue; end
+
+        % Blend method colour with model colour for unique appearance
+        blend_col = methods(k).col; % try method color instead 0.55 * methods(k).col + 0.45 * S.mcols(m, :);
+
+        mk  = [methods(k).ls(1), model_markers{mi}];   % e.g. '-o'
+        h   = plot(ax_A, sample_sizes(valid), pw(valid), mk, ...
+            'Color', blend_col, 'LineWidth', S.lw, ...
+            'MarkerSize', S.ms + 0.5, ...
+            'MarkerFaceColor', blend_col, ...
+            'DisplayName', sprintf('%s / %s', methods(k).name, model_labels{m}));
+        h_legend(end+1)  = h;         %#ok
+        leg_labels{end+1} = sprintf('%s – %s', methods(k).name, model_labels{m}); %#ok
+    end
+end
+
+% Power = 1 reference line
+yline(ax_A, 1.0, '-', 'Color', [0.4 0.4 0.4], 'LineWidth', 0.6, ...
+    'HandleVisibility', 'off');
+
+set(ax_A, 'XScale', 'log', 'XTick', sample_sizes, 'XTickLabel', x_tick);
+xlim(ax_A, [sample_sizes(1)*0.8, sample_sizes(end)*1.3]);
+ylim(ax_A, [-0.03, 1.05]);
+xlabel(ax_A, 'Sample size  n', 'FontName', S.font, 'FontSize', S.fsz);
+ylabel(ax_A, 'Empirical power  (P[p < \alpha])', ...
+    'FontName', S.font, 'FontSize', S.fsz, 'Interpreter', 'tex');
+title(ax_A, 'A   Power: functional models (H_1 true)', ...
+    'FontName', S.font, 'FontSize', S.fsz_title, ...
+    'FontWeight', 'bold', 'Interpreter', 'tex');
+legend(ax_A, h_legend, leg_labels, 'Location', 'southeast', ...
+    'FontName', S.font, 'FontSize', 5.5, 'Box', 'off', ...
+    'NumColumns', 2);
+
+annotation_text = sprintf('Dashed red = \\alpha  |  Dotted = 80%% power guideline');
+text(ax_A, 0.02, 0.03, annotation_text, 'Units', 'normalized', ...
+    'FontName', S.font, 'FontSize', S.fsz_ax - 1, ...
+    'Color', S.grey, 'Interpreter', 'tex');
+pub_ax(ax_A, S);
+hold(ax_A, 'off');
+
+% ---- Panel B: Type I error (random model) ----
+ax_B = subplot(2, 2, 2);
+hold(ax_B, 'on');
+
+% Nominal alpha band: +/- 2 * sqrt(alpha*(1-alpha)/n_reps) — 95% MC interval
+mc_se    = 2 * sqrt(alpha * (1-alpha) / n_reps);
+patch(ax_B, [sample_sizes(1)*0.8, sample_sizes(end)*1.3, ...
+             sample_sizes(end)*1.3, sample_sizes(1)*0.8], ...
+    [alpha - mc_se, alpha - mc_se, alpha + mc_se, alpha + mc_se], ...
+    [0.85 0.85 0.85], 'FaceAlpha', 0.45, 'EdgeColor', 'none', ...
+    'HandleVisibility', 'off');
+
+yline(ax_B, alpha, '--', 'Color', [0.82 0.05 0.05], 'LineWidth', 1.2, ...
+    'Label', sprintf('\\alpha=%.3f', alpha), ...
+    'LabelHorizontalAlignment', 'right', ...
+    'FontName', S.font, 'FontSize', S.fsz_ax, ...
+    'HandleVisibility', 'off', 'Interpreter', 'tex');
+
+for k = 1:n_methods
+    t1    = type1_mat{k};
+    valid = ~isnan(t1);
+    if ~any(valid), continue; end
+    plot(ax_B, sample_sizes(valid), t1(valid), methods(k).ls, ...
+        'Color', methods(k).col, 'LineWidth', S.lw + 0.2, ...
+        'MarkerSize', S.ms + 1, 'MarkerFaceColor', methods(k).col, ...
+        'DisplayName', methods(k).name);
+end
+
+% Bernstein Type I error for random model
+bern_t1 = bern_reject(rand_idx, :);
+valid   = ~isnan(bern_t1);
+if any(valid)
+    plot(ax_B, sample_sizes(valid), bern_t1(valid), '-p', ...
+        'Color', S.bern_col, 'LineWidth', S.lw + 0.2, ...
+        'MarkerSize', S.ms + 1, 'MarkerFaceColor', S.bern_col, ...
+        'DisplayName', 'Bernstein CI');
+end
+
+set(ax_B, 'XScale', 'log', 'XTick', sample_sizes, 'XTickLabel', x_tick);
+xlim(ax_B, [sample_sizes(1)*0.8, sample_sizes(end)*1.3]);
+ylim(ax_B, [0,0.5]); % min(1, alpha * 6)]);   % zoom around alpha &&&
+xlabel(ax_B, 'Sample size  n', 'FontName', S.font, 'FontSize', S.fsz);
+ylabel(ax_B, 'Type I error rate  (H_0 true)', ...
+    'FontName', S.font, 'FontSize', S.fsz, 'Interpreter', 'tex');
+title(ax_B, 'B   Type I error: random model (H_0 true)', ...
+    'FontName', S.font, 'FontSize', S.fsz_title, ...
+    'FontWeight', 'bold', 'Interpreter', 'tex');
+legend(ax_B, 'Location', 'northeast', 'FontName', S.font, ...
+    'FontSize', S.fsz_ax, 'Box', 'off');
+
+% Annotate with actual values
+for k = 1:n_methods
+    t1    = type1_mat{k};
+    valid = ~isnan(t1);
+    if ~any(valid), continue; end
+    last_s = find(valid, 1, 'last');
+    text(ax_B, sample_sizes(last_s) * 1.05, t1(last_s), ...
+        sprintf('%.3f', t1(last_s)), ...
+        'FontName', S.font, 'FontSize', S.fsz_ax - 1, ...
+        'Color', methods(k).col * 0.8, 'VerticalAlignment', 'middle');
+end
+
+text(ax_B, 0.02, 0.05, 'Grey band = ±2 MC SE of nominal \alpha', ...
+    'Units', 'normalized', 'FontName', S.font, 'FontSize', S.fsz_ax - 1, ...
+    'Color', S.grey, 'Interpreter', 'tex');
+pub_ax(ax_B, S);
+ax_B.Color = [0.96 0.95 0.92];   % random model background
+hold(ax_B, 'off');
+
+% ---- Panel C: Power heatmaps (one per method, functional models only) ----
+ax_C = subplot(2, 2, 3);
+hold(ax_C, 'on');
+
+%  tile 3 sub-heatmaps left-to-right inside this axes using imagesc
+% with manual x offsets; simpler to use a dedicated tiled approach.
+% Build a combined [n_func_models x n_sizes x n_methods] array and
+% display as a single wide heatmap with model-group separators.
+
+n_func   = numel(func_idx);
+% Concatenate vertically: rows = [ttest models; chi2 models; perm models]
+heat_mat = NaN(n_methods * n_func, n_sizes);
+
+for k = 1:n_methods
+    rows = (k-1)*n_func + (1:n_func);
+    for mi = 1:n_func
+        m = func_idx(mi);
+        heat_mat(rows(mi), :) = power_mat{k}(m, :);
+    end
+end
+
+imagesc(ax_C, heat_mat);
+colormap(ax_C, flipud(gray(256)));   % dark = high power
+clim(ax_C, [0, 1]);
+cb_C = colorbar(ax_C, 'eastoutside');
+cb_C.Label.String = 'Power (fraction p < \alpha)';
+cb_C.Label.FontSize = S.fsz_ax;
+cb_C.FontSize = S.fsz_ax;
+
+% Y-axis labels: method + model
+y_labs = cell(n_methods * n_func, 1);
+for k = 1:n_methods
+    for mi = 1:n_func
+        m = func_idx(mi);
+        y_labs((k-1)*n_func + mi) = ...
+            {sprintf('%s|%s', methods(k).name, model_labels{m})};
+    end
+end
+set(ax_C, 'YTick', 1:(n_methods*n_func), 'YTickLabel', y_labs, ...
+    'XTick', x_pos, 'XTickLabel', x_tick, ...
+    'TickLength', [0 0], 'FontSize', S.fsz_ax - 1);
+
+% Method group separator lines
+for k = 1:n_methods - 1
+    yline(ax_C, k * n_func + 0.5, '-', 'Color', [0.5 0.5 0.5], ...
+        'LineWidth', 1.2, 'HandleVisibility', 'off');
+end
+
+% Overlay numeric values
+for r = 1:(n_methods * n_func)
+    for s = 1:n_sizes
+        v = heat_mat(r, s);
+        if isnan(v), continue; end
+        % White text on dark cells, black on light
+        tcol = [1 1 1] * double(v < 0.55);
+        text(ax_C, s, r, sprintf('%.2f', v), ...
+            'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
+            'FontName', S.font, 'FontSize', max(4, S.fsz_ax - 2), ...
+            'Color', tcol);
+    end
+end
+
+xlabel(ax_C, 'Sample size  n', 'FontName', S.font, 'FontSize', S.fsz);
+title(ax_C, 'C   Power heatmap: all methods × functional models', ...
+    'FontName', S.font, 'FontSize', S.fsz_title, 'FontWeight', 'bold');
+pub_ax(ax_C, S);
+set(ax_C, 'Box', 'on', 'TickDir', 'in');
+hold(ax_C, 'off');
+
+% ---- Panel D: Bernstein CI rejection rate for all models ----
+ax_D = subplot(2, 2, 4);
+hold(ax_D, 'on');
+
+yline(ax_D, alpha, '--', 'Color', [0.82 0.05 0.05], 'LineWidth', 1.2, ...
+    'Label', sprintf('\\alpha=%.3f  (Type I ref)', alpha), ...
+    'LabelHorizontalAlignment', 'right', ...
+    'FontName', S.font, 'FontSize', S.fsz_ax, ...
+    'HandleVisibility', 'off', 'Interpreter', 'tex');
+yline(ax_D, 0.80, ':', 'Color', S.grey, 'LineWidth', 0.7, ...
+    'HandleVisibility', 'off');
+
+for m = 1:n_models
+    br    = bern_reject(m, :);
+    valid = ~isnan(br);
+    if ~any(valid), continue; end
+    col   = S.mcols(m, :);
+    lw_m  = S.lw + 0.3 * double(m == rand_idx);   % thicker for random
+    ls_m  = '-o';
+    if m == rand_idx, ls_m = '-p'; end
+    plot(ax_D, sample_sizes(valid), br(valid), ls_m, ...
+        'Color', col, 'LineWidth', lw_m, ...
+        'MarkerSize', S.ms + double(m == rand_idx), ...
+        'MarkerFaceColor', col, ...
+        'DisplayName', model_labels{m});
+end
+
+set(ax_D, 'XScale', 'log', 'XTick', sample_sizes, 'XTickLabel', x_tick);
+xlim(ax_D, [sample_sizes(1)*0.8, sample_sizes(end)*1.3]);
+ylim(ax_D, [-0.03, 1.05]);
+xlabel(ax_D, 'Sample size  n', 'FontName', S.font, 'FontSize', S.fsz);
+ylabel(ax_D, 'Rejection rate  (CI_{lo} > 0.1)', ...
+    'FontName', S.font, 'FontSize', S.fsz);
+title(ax_D, 'D   Bernstein CI rejection rate (all models)', ...
+    'FontName', S.font, 'FontSize', S.fsz_title, ...
+    'FontWeight', 'bold');
+legend(ax_D, 'Location', 'southeast', 'FontName', S.font, ...
+    'FontSize', S.fsz_ax, 'Box', 'off');
+
+text(ax_D, 0.02, 0.05, ...
+    'Reject H_0 when Bernstein CI lower bound > 0', ...
+    'Units', 'normalized', 'FontName', S.font, ...
+    'FontSize', S.fsz_ax - 1, 'Color', S.grey, 'Interpreter', 'tex');
+
+ax_D.Color = [0.96 0.95 0.92];   % highlight random in background
+pub_ax(ax_D, S);
+hold(ax_D, 'off');
+
+% ------------------------------------------------------------------
+% Footer annotation
+% ------------------------------------------------------------------
+annotation(fig, 'textbox', [0.02 0.001 0.96 0.028], ...
+    'String', [ ...
+    'A: Power curves — each line = one method × functional model. ', ...
+    'B: Type I error — random model (H0 true); all values should lie near \alpha (red dashed); grey band = ±2 MC SE. ', ...
+    'C: Power heatmap — dark = high power; rows grouped by method; separator lines between method blocks. ', ...
+    'D: Bernstein CI rejection rate — H0 rejected when lower CI bound > 0; random (pentagon) = Type I proxy.'], ...
+    'FontName', S.font, 'FontSize', 6, 'EdgeColor', 'none', ...
+    'Color', S.grey, 'HorizontalAlignment', 'center', 'Interpreter', 'tex');
+
+set(fig, 'PaperUnits', 'centimeters', 'PaperSize', [26 26]);
 end
